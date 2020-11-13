@@ -1,0 +1,208 @@
+---
+# Source: openldap/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openldap
+  labels:
+    app: openldap
+    chart: openldap-1.2.5
+    release: openldap
+    heritage: Helm
+type: Opaque
+data:
+  LDAP_ADMIN_PASSWORD: "Vk13YXIzIVZNd2FyMyE="
+  LDAP_CONFIG_PASSWORD: "Vk13YXIzIVZNd2FyMyE="
+---
+# Source: openldap/templates/configmap-customldif.yaml
+#
+# A ConfigMap spec for openldap slapd that map directly to files under
+# /container/service/slapd/assets/config/bootstrap/ldif/custom
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openldap-customldif
+  labels:
+    app: openldap
+    chart: openldap-1.2.5
+    release: openldap
+    heritage: Helm
+data:
+  01-default-users.ldif: |-
+    dn: ou=People,dc=example,dc=org
+    objectClass: organizationalUnit
+    ou: People
+    
+    dn: cn=jane,ou=People,dc=example,dc=org
+    objectClass: person
+    objectClass: inetOrgPerson
+    sn: doe
+    cn: jane
+    mail: janedoe@example.org
+    userpassword: foo
+    
+    dn: cn=john,ou=People,dc=example,dc=org
+    objectClass: person
+    objectClass: inetOrgPerson
+    sn: doe
+    cn: john
+    mail: johndoe@example.org
+    userpassword: bar
+    
+    # Group definitions.
+    
+    dn: ou=Groups,dc=example,dc=org
+    objectClass: organizationalUnit
+    ou: Groups
+    
+    dn: cn=admins,ou=Groups,dc=example,dc=org
+    objectClass: groupOfNames
+    cn: admins
+    member: cn=john,ou=People,dc=example,dc=org
+    member: cn=jane,ou=People,dc=example,dc=org
+    
+    dn: cn=developers,ou=Groups,dc=example,dc=org
+    objectClass: groupOfNames
+    cn: developers
+    member: cn=jane,ou=People,dc=example,dc=org
+---
+# Source: openldap/templates/configmap-env.yaml
+#
+# A ConfigMap spec for openldap slapd that map directly to env variables in the Pod.
+# List of environment variables supported is from the docker image:
+# https://github.com/osixia/docker-openldap#beginner-guide
+# Note that passwords are defined as secrets
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openldap-env
+  labels:
+    app: openldap
+    chart: openldap-1.2.5
+    release: openldap
+    heritage: Helm
+data:
+  LDAP_BACKEND: hdb
+  LDAP_DOMAIN: example.org
+  LDAP_ORGANISATION: Example Inc.
+  LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+  LDAP_TLS: "true"
+  LDAP_TLS_ENFORCE: "false"
+---
+# Source: openldap/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: openldap
+  labels:
+    app: openldap
+    chart: openldap-1.2.5
+    release: openldap
+    heritage: Helm
+spec:
+  ports:
+    - name: ldap-port
+      protocol: TCP
+      port: 389
+      targetPort: ldap-port
+    - name: ssl-ldap-port
+      protocol: TCP
+      port: 636
+      targetPort: ssl-ldap-port
+  selector:
+    app: openldap
+    release: openldap
+  type: ClusterIP
+---
+# Source: openldap/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  openldap
+  labels:
+    app: openldap
+    chart: openldap-1.2.5
+    release: openldap
+    heritage: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openldap
+      release: openldap
+  template:
+    metadata:
+      annotations:
+        checksum/configmap-env: f27c96b89d5db41b3a7d712c4ec103b030470b1396f9b744bddb2d63e28f5be2
+        checksum/configmap-customldif: 95f91b6588fc5020bcd3c4d5e59103c94e8b1acbff50b965fdb27830b6ae2ef2
+      labels:
+        app: openldap
+        release: openldap
+    spec:
+      initContainers:
+      - name: openldap-init-ldif
+        image: busybox
+        command: ['sh', '-c', 'cp /customldif/* /ldifworkingdir']
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: customldif
+          mountPath: /customldif
+        - name: ldifworkingdir
+          mountPath: /ldifworkingdir
+        resources:
+          {}
+      containers:
+        - name: openldap
+          image: "osixia/openldap:1.2.4"
+          imagePullPolicy: IfNotPresent
+          args:
+            - -l
+            - info
+            - --copy-service
+          ports:
+            - name: ldap-port
+              containerPort: 389
+            - name: ssl-ldap-port
+              containerPort: 636
+          envFrom:
+            - configMapRef:
+                name: openldap-env
+            - secretRef:
+                name: openldap
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/ldap
+              subPath: data
+            - name: data
+              mountPath: /etc/ldap/slapd.d
+              subPath: config-data
+            - name: ldifworkingdir
+              mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
+          env:
+          livenessProbe:
+            tcpSocket:
+              port: ldap-port
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            tcpSocket:
+              port: ldap-port
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 10
+          resources:
+            {}
+      volumes:
+        - name: customldif
+          configMap:
+            name: openldap-customldif
+        - name: ldifworkingdir
+          emptyDir: {}
+        - name: certs
+          emptyDir:
+            medium: Memory
+        - name: data
+          emptyDir: {}

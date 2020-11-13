@@ -1,0 +1,17 @@
+#@ load("values.star", "values")
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: gangway-httpproxy
+  namespace: #@ values.gangway.namespace
+  labels:
+    app: #@ values.gangway.app
+spec:
+  virtualhost:
+    fqdn: #@ values.gangway.ingress.virtual_host_fqdn
+  routes:
+  - services:
+    - name: gangwaysvc
+      port: 443
+      protocol: tls

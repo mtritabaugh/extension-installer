@@ -1,0 +1,16 @@
+#@ load("values.star", "values")
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: kibana-httpproxy
+  namespace: tanzu-system-logging
+  labels:
+    app: #@ values.kibana.app
+spec:
+  virtualhost:
+    fqdn: #@ values.kibana.ingress.virtual_host_fqdn
+  routes:
+  - services:
+    - name: kibana
+      port: 5601

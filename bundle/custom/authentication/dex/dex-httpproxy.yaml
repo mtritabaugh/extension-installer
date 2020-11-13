@@ -1,0 +1,15 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: dex-httpproxy
+  namespace: tanzu-system-auth
+spec:
+  virtualhost:
+    fqdn: dex.system.tanzu
+    tls:
+      secretName: dex-tls
+  routes:
+  - services:
+    - name: dexsvc
+      port: 443
+      protocol: tls

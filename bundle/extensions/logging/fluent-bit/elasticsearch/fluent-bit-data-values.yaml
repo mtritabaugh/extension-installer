@@ -1,0 +1,14 @@
+#@data/values
+#@overlay/match-child-defaults missing_ok=True
+---
+logging:
+  image:
+    repository: registry.tkg.vmware.run
+tkg:
+  instance_name: tkg-man
+  cluster_name: tkg-aws-cluster1
+fluent_bit:
+  output_plugin: "elasticsearch"
+  elasticsearch:
+    host: "elasticsearch.tanzu-system-logging.svc.cluster.local"
+    port: "9200"

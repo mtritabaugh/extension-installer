@@ -1,0 +1,17 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: gangway-httpproxy
+  namespace: tanzu-system-auth
+  labels:
+    app: gangway
+spec:
+  virtualhost:
+    fqdn: gangway.system.tanzu
+    tls:
+      secretName: gangway-tls
+  routes:
+  - services:
+    - name: gangwaysvc
+      port: 443
+      protocol: tls

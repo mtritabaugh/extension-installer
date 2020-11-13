@@ -1,0 +1,42 @@
+#@data/values
+#@overlay/match-child-defaults missing_ok=True
+---
+infrastructure_provider: "aws"
+dex:
+  image:
+    repository: registry.tkg.vmware.run
+  config:
+    connector: ldap
+    ldap:
+      host: openldap.tanzu-system-auth.svc.cluster.local:389
+      insecureNoSSL: true
+      insecureSkipVerify: true
+      bindDN: cn=admin,dc=example,dc=org
+      bindPW: VMwar3!VMwar3!
+      userSearch:
+        baseDN: ou=People,dc=example,dc=org
+        filter: "(objectClass=person)"
+        username: mail
+        idAttr: DN
+        emailAttr: mail
+        nameAttr: cn
+      groupSearch:
+        baseDN: ou=Groups,dc=example,dc=org
+        filter: "(objectClass=groupOfNames)"
+        userAttr: DN
+        groupAttr: member
+        nameAttr: cn
+    #! Deploy dex first with dummy staticClients. Once gangway is installed in workload cluster, update static clients with gangway information
+    #@overlay/replace
+    staticClients:
+    - id: tkg-aws-cluster1
+      redirectURIs:
+      - https://gangway.system.tanzu/callback
+      name: tkg-aws-cluster1
+      secret: 4e8cb3beb8e9ef0866b5517036f36816
+#! Deploy dex first and update sample-lb with real name once dex service loadbalancer is created, dnsNames is optional.
+dns:
+  aws:
+    DEX_SVC_LB_HOSTNAME: dex.system.test
+    dnsNames:
+    - dexsvc.tanzu-system-auth.svc.cluster.local

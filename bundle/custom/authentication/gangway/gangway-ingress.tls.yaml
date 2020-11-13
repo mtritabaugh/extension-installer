@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: tanzu-issuer
+    ingress.kubernetes.io/force-ssl-redirect: "true"
+  name: gangway-ingress
+  namespace: tanzu-system-auth
+spec:
+  rules:
+  - host: gangway.system.tanzu
+    http:
+      paths:
+      - backend:
+          serviceName: gangwaysvc
+          servicePort: 443
+  tls:
+  - hosts:
+    - gangway.system.tanzu
+    secretName: gangway-tls

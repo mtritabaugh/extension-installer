@@ -1,0 +1,15 @@
+#@data/values
+#@overlay/match-child-defaults missing_ok=True
+---
+kibana:
+  app: kibana
+  ingress:
+    enabled: true
+    tlsCertificate:
+      # [Required] the certificate
+      tls.crt:
+      # [Required] the private key
+      tls.key:
+      ca.crt:
+    virtual_host_fqdn: kibana.system.tanzu
+  namespace: tanzu-system-logging

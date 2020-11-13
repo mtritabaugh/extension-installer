@@ -1,0 +1,25 @@
+#@ load("@ytt:data", "data")
+#@data/values
+#@overlay/match-child-defaults missing_ok=True
+---
+infrastructure_provider: "aws"
+namespace: gangway
+gangway:
+  namespace: tanzu-system-auth
+  image:
+    repository: registry.tkg.vmware.run
+  config:
+    clusterName: tkg-aws-cluster1
+    DEX_SVC_LB_HOSTNAME: dex.system.tanzu
+    clientID: tkg-aws-cluster1
+    APISERVER_URL: api.system.tanzu
+  secret:
+    sessionKey: 887bea50eceec8dd4ac13bc961d84f04
+    clientSecret: 4e8cb3beb8e9ef0866b5517036f36816
+dns:
+  aws:
+    GANGWAY_SVC_LB_HOSTNAME: gangway.system.tanzu
+dex:
+#@ files = data.list()
+#@ for/end file in [ f for f in files if f.endswith(".pem") ]:
+  ca: #@ data.read(file)
